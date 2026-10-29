@@ -1,8 +1,14 @@
 .venv/
 __pycache__/
-.pytest_cache/
 *.py[cod]
+.pytest_cache/
 .env
+
 data/raw/*
+!data/raw/centrifugal_pump/
+data/raw/centrifugal_pump/*
+!data/raw/centrifugal_pump/README.md
+
 data/processed/*
-!.gitkeep
+reports/*
+!reports/README.md

@@ -4,6 +4,7 @@ import src.etl as etl
 
 from src.etl import REQUIRED_COLUMNS, create_sample_data, transform
 from sqlalchemy import create_engine, inspect
+from src.pump_etl import transform as transform_pump
 
 
 def test_transform_removes_missing_values():
@@ -78,3 +79,77 @@ def test_load_saves_csv_and_sqlite(tmp_path, monkeypatch):
         assert len(saved_db) == len(clean_df)
     finally:
         engine.dispose()
+
+def test_pump_transform_converts_timestamp_to_utc():
+    raw_df = pd.DataFrame(
+        {
+            "Timestamp": ["2024-04-10T12:00:00Z"],
+            "A_Pres.PV": [0.45],
+        }
+    )
+
+    clean_df = transform_pump(raw_df)
+
+    assert pd.api.types.is_datetime64_any_dtype(
+        clean_df["Timestamp"]
+    )
+    assert str(clean_df["Timestamp"].dt.tz) == "UTC"
+
+def test_pump_transform_removes_invalid_timestamp():
+    raw_df = pd.DataFrame(
+        {
+            "Timestamp": [
+                "2024-04-10T12:00:00Z",
+                "invalid-timestamp",
+            ],
+            "A_Pres.PV": [0.45, 0.50],
+        }
+    )
+
+    clean_df = transform_pump(raw_df)
+
+    assert len(clean_df) == 1
+
+
+def test_pump_transform_preserves_missing_sensor_values():
+    raw_df = pd.DataFrame(
+        {
+            "Timestamp": ["2024-04-10T12:00:00Z"],
+            "A_Pres.PV": [None],
+        }
+    )
+
+    clean_df = transform_pump(raw_df)
+
+    assert len(clean_df) == 1
+    assert pd.isna(clean_df.loc[0, "A_Pres.PV"])
+
+
+def test_pump_transform_removes_exact_duplicates():
+    raw_df = pd.DataFrame(
+        {
+            "Timestamp": [
+                "2024-04-10T12:00:00Z",
+                "2024-04-10T12:00:00Z",
+            ],
+            "A_Pres.PV": [0.45, 0.45],
+        }
+    )
+
+    clean_df = transform_pump(raw_df)
+
+    assert len(clean_df) == 1
+
+
+def test_pump_transform_rejects_missing_timestamp_column():
+    raw_df = pd.DataFrame(
+        {
+            "A_Pres.PV": [0.45],
+        }
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Missing required column",
+    ):
+        transform_pump(raw_df)
