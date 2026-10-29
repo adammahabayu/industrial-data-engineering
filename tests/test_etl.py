@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 import src.etl as etl
+import src.analytics as analytics
 
 from src.etl import REQUIRED_COLUMNS, create_sample_data, transform
 from sqlalchemy import create_engine, inspect
@@ -153,3 +154,125 @@ def test_pump_transform_rejects_missing_timestamp_column():
         match="Missing required column",
     ):
         transform_pump(raw_df)
+
+def test_pump_summary_returns_correct_aggregates(tmp_path, monkeypatch):
+    db_path = tmp_path / "industrial_data.db"
+
+    engine = create_engine(f"sqlite:///{db_path.as_posix()}")
+
+    test_data = pd.DataFrame(
+        {
+            "Timestamp": [
+                "2024-04-10 12:00:00.000000",
+                "2024-04-10 12:01:00.000000",
+                "2024-04-10 12:02:00.000000",
+            ],
+            "A_Pres.PV": [2.0, 4.0, None],
+            "A_Temp.PV": [20.0, None, 30.0],
+            "A_ACR_Mot.PV": [100.0, 110.0, None],
+            "A_ACR_Pmp.PV": [50.0, None, 60.0],
+        }
+    )
+
+    try:
+        test_data.to_sql(
+            "centrifugal_pump_readings",
+            engine,
+            index=False,
+        )
+    finally:
+        engine.dispose()
+
+    monkeypatch.setattr(analytics, "DATABASE_PATH", db_path)
+
+    summary = analytics.get_pump_summary()
+
+    assert len(summary) == 1
+    assert summary.loc[0, "total_readings"] == 3
+
+    assert summary.loc[0, "avg_pressure"] == 3.0
+    assert summary.loc[0, "min_pressure"] == 2.0
+    assert summary.loc[0, "max_pressure"] == 4.0
+
+    assert summary.loc[0, "avg_pump_temperature"] == 25.0
+    assert summary.loc[0, "min_pump_temperature"] == 20.0
+    assert summary.loc[0, "max_pump_temperature"] == 30.0
+
+    assert summary.loc[0, "missing_pressure"] == 1
+    assert summary.loc[0, "missing_pump_temperature"] == 1
+    assert summary.loc[0, "missing_motor_readings"] == 1
+    assert summary.loc[0, "missing_pump_readings"] == 1
+
+
+def test_pump_summary_returns_timestamp_range(tmp_path, monkeypatch):
+    db_path = tmp_path / "industrial_data.db"
+
+    engine = create_engine(f"sqlite:///{db_path.as_posix()}")
+
+    test_data = pd.DataFrame(
+        {
+            "Timestamp": [
+                "2024-04-10 12:00:00.000000",
+                "2024-04-10 12:02:00.000000",
+            ],
+            "A_Pres.PV": [2.0, 4.0],
+            "A_Temp.PV": [20.0, 30.0],
+            "A_ACR_Mot.PV": [100.0, 110.0],
+            "A_ACR_Pmp.PV": [50.0, 60.0],
+        }
+    )
+
+    try:
+        test_data.to_sql(
+            "centrifugal_pump_readings",
+            engine,
+            index=False,
+        )
+    finally:
+        engine.dispose()
+
+    monkeypatch.setattr(analytics, "DATABASE_PATH", db_path)
+
+    summary = analytics.get_pump_summary()
+
+    assert summary.loc[0, "first_reading_utc"] == (
+        "2024-04-10 12:00:00.000000"
+    )
+    assert summary.loc[0, "last_reading_utc"] == (
+        "2024-04-10 12:02:00.000000"
+    )
+
+
+def test_pump_summary_handles_missing_sensor_values(tmp_path, monkeypatch):
+    db_path = tmp_path / "industrial_data.db"
+
+    engine = create_engine(f"sqlite:///{db_path.as_posix()}")
+
+    test_data = pd.DataFrame(
+        {
+            "Timestamp": ["2024-04-10 12:00:00.000000"],
+            "A_Pres.PV": [None],
+            "A_Temp.PV": [None],
+            "A_ACR_Mot.PV": [None],
+            "A_ACR_Pmp.PV": [None],
+        }
+    )
+
+    try:
+        test_data.to_sql(
+            "centrifugal_pump_readings",
+            engine,
+            index=False,
+        )
+    finally:
+        engine.dispose()
+
+    monkeypatch.setattr(analytics, "DATABASE_PATH", db_path)
+
+    summary = analytics.get_pump_summary()
+
+    assert summary.loc[0, "total_readings"] == 1
+    assert pd.isna(summary.loc[0, "avg_pressure"])
+    assert pd.isna(summary.loc[0, "avg_pump_temperature"])
+    assert summary.loc[0, "missing_pressure"] == 1
+    assert summary.loc[0, "missing_pump_temperature"] == 1

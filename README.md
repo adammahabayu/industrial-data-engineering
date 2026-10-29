@@ -9,17 +9,17 @@ The project includes two data pipelines:
 1. A synthetic machine-sensor pipeline for demonstrating ETL logic
    and automated testing.
 2. A centrifugal pump sensor pipeline that processes a publicly
-   sourced dataset.
+   sourced industrial dataset.
 
 ## Project Objectives
 
 - Build reusable ETL pipelines with Python.
-- Validate and clean timestamp and sensor data.
+- Validate and clean timestamps and sensor data.
 - Identify missing values and invalid timestamps.
 - Store processed data in CSV and SQLite.
 - Generate a data quality report.
-- Perform basic SQL analytics on machine sensor readings.
-- Test transformation logic using pytest.
+- Perform SQL analytics on synthetic machine and pump sensor data.
+- Test transformation and analytics logic using pytest.
 
 ## Project Structure
 
@@ -33,7 +33,8 @@ industrial-data-engineering/
 │   └── processed/
 │       # Generated CSV and SQLite database; Git-ignored
 ├── reports/
-│   └── pump_data_quality_report.txt
+│   └── README.md
+│   # Generated data quality report; Git-ignored
 ├── src/
 │   ├── __init__.py
 │   ├── etl.py
@@ -108,8 +109,7 @@ It does not represent actual industrial sensor measurements.
 
 ### Dataset Source
 
-The pump pipeline processes a CSV from the following public dataset
-record:
+The pump pipeline processes a CSV from the following public dataset:
 
 - **Source:** [Centrifugal Pump Dataset on Zenodo](https://zenodo.org/records/18479728)
 - **Local filename:** `A_2024-04-10.csv`
@@ -132,7 +132,7 @@ python -m src.pump_etl
 
 The pipeline performs the following steps:
 
-1. Reads the raw CSV file.
+1. Reads the raw CSV.
 2. Converts timestamps to UTC.
 3. Converts sensor columns to numeric values.
 4. Removes rows with invalid timestamps.
@@ -196,8 +196,8 @@ does not infer failure labels or diagnose equipment faults.
 
 ## SQL Analytics
 
-The project includes a basic SQL analytics module for summarizing
-machine sensor readings from the synthetic pipeline.
+The project provides SQL-based analytics for both synthetic machine
+sensor data and centrifugal pump sensor data.
 
 Run the analytics module:
 
@@ -205,29 +205,51 @@ Run the analytics module:
 python -m src.analytics
 ```
 
-The module queries the `machine_sensor_readings` SQLite table and
-generates a summary for each machine, including:
+The module queries the SQLite database and generates summaries
+from both `machine_sensor_readings` and
+`centrifugal_pump_readings`.
 
-- Total sensor readings.
+### Synthetic Machine Sensor Analytics
+
+The module summarizes readings from the `machine_sensor_readings`
+table, including:
+
+- Total sensor readings per machine.
 - Average temperature.
 - Maximum vibration.
 - Average pressure.
 
-The results are calculated using SQL aggregation functions such as
-`COUNT`, `AVG`, and `MAX`, grouped by machine ID.
+### Centrifugal Pump Sensor Analytics
 
-**Scope:** This module currently analyzes the synthetic machine
-sensor dataset. It does not yet analyze the centrifugal pump table.
+The module summarizes readings from the `centrifugal_pump_readings`
+table, including:
+
+- Total readings and observation time range.
+- Average, minimum, and maximum pressure.
+- Average, minimum, and maximum pump temperature.
+- Missing pressure readings.
+- Missing pump temperature readings.
+- Missing motor readings.
+- Missing pump readings.
+
+SQL aggregation functions such as `COUNT`, `AVG`, `MIN`, `MAX`,
+and `SUM` are used to calculate these metrics.
+
+Missing sensor values are counted explicitly. Average, minimum,
+and maximum calculations exclude SQL `NULL` values.
+
+The pump analytics requires the centrifugal pump ETL pipeline to
+have populated the SQLite table before it is run.
 
 ## Automated Tests
 
-Run the test suite:
+Run the complete test suite:
 
 ```powershell
 python -m pytest -v
 ```
 
-The current test suite contains 11 tests covering:
+The test suite contains 14 tests covering:
 
 - Missing-value handling in the synthetic pipeline.
 - Duplicate removal and sorting.
@@ -238,11 +260,14 @@ The current test suite contains 11 tests covering:
 - Preservation of missing sensor values.
 - Exact duplicate removal.
 - Missing timestamp-column validation.
+- Pump analytics aggregation.
+- Timestamp range calculations.
+- SQL `NULL` handling in analytics.
 
-Latest development test result: **11 passed**.
+Latest development test result: **14 passed**.
 
-Run the tests after modifying the ETL logic to check that existing
-behavior remains correct.
+Run the tests after modifying the ETL or analytics logic to check
+that existing behavior remains correct.
 
 ## Current Limitations
 
@@ -250,20 +275,22 @@ behavior remains correct.
 - Missing sensor values are reported and preserved, not imputed.
 - Sensor units and abnormal-value thresholds must be verified
   against the dataset documentation before interpreting readings.
-- SQL analytics currently targets the synthetic machine sensor table.
+- The synthetic dataset is intended for demonstration and testing.
 - The project does not yet implement automated scheduling,
   production orchestration, or failure prediction.
 - The pump pipeline does not currently include labeled failure
   events or a validated fault-detection model.
+- Analytics summarizes available sensor data but does not establish
+  causal relationships or diagnose equipment faults.
 
 ## Future Improvements
 
 - Add structured logging and pipeline execution metadata.
-- Extend SQL analytics to the centrifugal pump dataset.
 - Add tests for database contents and data quality reports.
 - Support configurable input files and larger datasets.
 - Add reproducible dataset download instructions.
 - Introduce automated pipeline scheduling and orchestration.
+- Add visualizations and trend analysis for pump sensor readings.
 - Integrate with a predictive maintenance model when suitable
   labels and evaluation data are available.
 
