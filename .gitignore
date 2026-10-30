@@ -1,14 +1,22 @@
+# Python
 .venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .env
 
+# Application logs
+logs/
+
+# Raw datasets
 data/raw/*
 !data/raw/centrifugal_pump/
 data/raw/centrifugal_pump/*
 !data/raw/centrifugal_pump/README.md
 
+# Processed data
 data/processed/*
+
+# Reports
 reports/*
 !reports/README.md

@@ -3,6 +3,12 @@ from pathlib import Path
 import pandas as pd
 from sqlalchemy import create_engine
 
+from src.logging_config import setup_logging
+from src.pipeline_metadata import (
+    finish_pipeline_run,
+    start_pipeline_run,
+)
+
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -27,6 +33,8 @@ DATABASE_PATH = (
 TABLE_NAME = "centrifugal_pump_readings"
 
 TIMESTAMP_COLUMN = "Timestamp"
+
+logger = setup_logging()
 
 
 def extract() -> pd.DataFrame:
@@ -112,34 +120,103 @@ def load(df: pd.DataFrame) -> None:
 
 
 def run_pipeline() -> pd.DataFrame:
-    """Run the pump sensor ETL pipeline."""
+    """Run the pump sensor ETL pipeline with logging and metadata."""
 
-    raw_df = extract()
-    clean_df = transform(raw_df)
+    pipeline_name = "centrifugal_pump_etl"
 
-    load(clean_df)
+    run = start_pipeline_run(pipeline_name)
 
-    print(f"Source file: {RAW_DATA_PATH.name}")
-    print(f"Raw rows: {len(raw_df)}")
-    print(f"Clean rows: {len(clean_df)}")
-    print(
-        f"Rows removed: {len(raw_df) - len(clean_df)}"
+    run_id = run["run_id"]
+    timer_start = run["timer_start"]
+
+    raw_df = None
+    clean_df = None
+
+    logger.info(
+        "Starting pipeline: %s | Run ID: %s",
+        pipeline_name,
+        run_id,
     )
-    print(
-        "Missing values before cleaning:",
+
+    try:
+        logger.info(
+            "Extracting pump sensor data from %s...",
+            RAW_DATA_PATH.name,
+        )
+
+        raw_df = extract()
+
+        logger.info(
+            "Extraction completed. Rows: %s",
+            len(raw_df),
+        )
+
+        logger.info("Transforming pump sensor data...")
+
+        clean_df = transform(raw_df)
+
+        logger.info(
+            "Transformation completed. Rows: %s",
+            len(clean_df),
+        )
+
+        logger.info("Loading processed pump data...")
+
+        load(clean_df)
+
+    except Exception as exc:
+        finish_pipeline_run(
+            run_id=run_id,
+            timer_start=timer_start,
+            rows_input=len(raw_df) if raw_df is not None else None,
+            rows_output=len(clean_df) if clean_df is not None else None,
+            status="FAILED",
+            error_message=str(exc),
+        )
+
+        logger.exception(
+            "Pipeline failed: %s | Run ID: %s",
+            pipeline_name,
+            run_id,
+        )
+
+        raise
+
+    finish_pipeline_run(
+        run_id=run_id,
+        timer_start=timer_start,
+        rows_input=len(raw_df),
+        rows_output=len(clean_df),
+        status="SUCCESS",
+    )
+
+    logger.info(
+        "Pipeline completed successfully: %s | Run ID: %s",
+        pipeline_name,
+        run_id,
+    )
+
+    logger.info("Source file: %s", RAW_DATA_PATH.name)
+    logger.info("Raw rows: %s", len(raw_df))
+    logger.info("Clean rows: %s", len(clean_df))
+    logger.info(
+        "Rows removed: %s",
+        len(raw_df) - len(clean_df),
+    )
+
+    logger.info(
+        "Missing values before cleaning: %s",
         int(raw_df.isna().sum().sum()),
     )
-    print(
-        "Missing values after cleaning:",
+
+    logger.info(
+        "Missing values after cleaning: %s",
         int(clean_df.isna().sum().sum()),
     )
-    print(
-        f"Clean CSV: {PROCESSED_CSV_PATH}"
-    )
-    print(
-        f"SQLite database: {DATABASE_PATH}"
-    )
-    print(f"SQLite table: {TABLE_NAME}")
+
+    logger.info("Clean CSV: %s", PROCESSED_CSV_PATH)
+    logger.info("SQLite database: %s", DATABASE_PATH)
+    logger.info("SQLite table: %s", TABLE_NAME)
 
     return clean_df
 

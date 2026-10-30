@@ -1,15 +1,11 @@
 # Industrial Data Engineering Pipeline
 
-A Python-based industrial data engineering project demonstrating ETL
-(Extract, Transform, Load), data quality checks, CSV processing,
-SQL analytics, SQLite storage, and automated testing.
+A Python-based industrial data engineering project demonstrating ETL (Extract, Transform, Load), data quality checks, CSV processing, SQL analytics, SQLite storage, structured logging, pipeline execution metadata, and automated testing.
 
 The project includes two data pipelines:
 
-1. A synthetic machine-sensor pipeline for demonstrating ETL logic
-   and automated testing.
-2. A centrifugal pump sensor pipeline that processes a publicly
-   sourced industrial dataset.
+1. A synthetic machine-sensor pipeline for demonstrating ETL logic and automated testing.
+2. A centrifugal pump sensor pipeline that processes a publicly sourced industrial dataset.
 
 ## Project Objectives
 
@@ -19,285 +15,312 @@ The project includes two data pipelines:
 - Store processed data in CSV and SQLite.
 - Generate a data quality report.
 - Perform SQL analytics on synthetic machine and pump sensor data.
+- Implement structured logging for pipeline execution.
+- Track pipeline execution metadata in SQLite.
 - Test transformation and analytics logic using pytest.
 
 ## Project Structure
 
 ```text
 industrial-data-engineering/
-├── data/
-│   ├── raw/
-│   │   └── centrifugal_pump/
-│   │       └── README.md
-│   │       # Raw CSV is downloaded separately and Git-ignored
-│   └── processed/
-│       # Generated CSV and SQLite database; Git-ignored
-├── reports/
-│   └── README.md
-│   # Generated data quality report; Git-ignored
-├── src/
-│   ├── __init__.py
-│   ├── etl.py
-│   ├── pump_etl.py
-│   ├── data_quality.py
-│   └── analytics.py
-├── tests/
-│   └── test_etl.py
-├── .gitignore
-├── README.md
-└── requirements.txt
+|-- data/
+|   |-- raw/
+|   |   |-- centrifugal_pump/
+|   |       |-- README.md
+|   |       # Raw CSV is downloaded separately and Git-ignored
+|   |-- processed/
+|       # Generated CSV and SQLite database; Git-ignored
+|-- logs/
+|   # Generated pipeline logs; Git-ignored
+|-- reports/
+|   |-- README.md
+|   # Generated data quality report; Git-ignored
+|-- src/
+|   |-- __init__.py
+|   |-- etl.py
+|   |-- pump_etl.py
+|   |-- data_quality.py
+|   |-- analytics.py
+|   |-- logging_config.py
+|   |-- pipeline_metadata.py
+|-- tests/
+|   |-- test_etl.py
+|-- .gitignore
+|-- README.md
+|-- requirements.txt
 ```
-
-Note: Generated files and directories may not appear in the Git
-repository because they are excluded by `.gitignore`. The raw pump
-CSV must be downloaded separately.
 
 ## Requirements
 
-- Python 3.13
-- pandas
-- SQLAlchemy
-- pytest
+- Python 3.10 or later
+- pip
+- Git
+- SQLite
 
-## Installation
+Python dependencies are listed in `requirements.txt`.
 
-Clone the repository and enter the project directory:
+## Installation and Setup
 
-```powershell
+Follow these steps to set up the project on your local machine.
+
+### 1. Clone the Repository
+
+```bash
 git clone https://github.com/adammahabayu/industrial-data-engineering.git
 cd industrial-data-engineering
 ```
 
-Create and activate a virtual environment:
+If you already have the project folder, you can skip this step.
+
+### 2. Create a Virtual Environment
+
+```bash
+python -m venv .venv
+```
+
+### 3. Activate the Virtual Environment
+
+For Windows PowerShell:
 
 ```powershell
-python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-Install dependencies:
+### 4. Install Dependencies
 
-```powershell
+```bash
 python -m pip install -r requirements.txt
 ```
 
-## Pipeline 1: Synthetic Sensor ETL
+### 5. Download the Centrifugal Pump Dataset
 
-This pipeline uses generated sample data when its expected raw CSV
-is unavailable. It demonstrates basic ETL behavior and is used by
-the automated tests.
+Download the dataset from:
 
-Run the pipeline:
+https://zenodo.org/records/18479728
 
-```powershell
+Place `A_2024-04-10.csv` inside:
+
+`data/raw/centrifugal_pump/`
+
+The raw dataset is not included in this repository and must be downloaded separately.
+
+## Running the Pipelines
+
+This project contains two independent ETL pipelines.
+
+### 1. Machine Sensor Pipeline
+
+Run:
+
+```bash
 python -m src.etl
 ```
 
-Expected outputs:
+This pipeline:
 
-- `data/processed/machine_sensor_clean.csv`
-- `data/processed/industrial_data.db`
-
-SQLite table:
-
-`machine_sensor_readings`
-
-The synthetic data is intended for demonstration and testing.
-It does not represent actual industrial sensor measurements.
-
-## Pipeline 2: Centrifugal Pump Sensor ETL
-
-### Dataset Source
-
-The pump pipeline processes a CSV from the following public dataset:
-
-- **Source:** [Centrifugal Pump Dataset on Zenodo](https://zenodo.org/records/18479728)
-- **Local filename:** `A_2024-04-10.csv`
-- **Local directory:** `data/raw/centrifugal_pump/`
-
-Read `data/raw/centrifugal_pump/README.md` for dataset notes and
-initial data quality audit results.
-
-The raw CSV is excluded from Git. Download it from the original
-source and place it at the expected path before running the pipeline.
-
-Consult the original dataset record for authorship, dataset
-description, license, and usage conditions.
-
-### Run the Pipeline
-
-```powershell
-python -m src.pump_etl
-```
-
-The pipeline performs the following steps:
-
-1. Reads the raw CSV.
-2. Converts timestamps to UTC.
-3. Converts sensor columns to numeric values.
-4. Removes rows with invalid timestamps.
-5. Removes exact duplicate records.
-6. Sorts records by timestamp.
-7. Preserves missing sensor values for further data quality analysis.
-8. Saves the processed data to CSV and SQLite.
-
-Generated outputs:
-
-- `data/processed/centrifugal_pump_clean.csv`
-- `data/processed/industrial_data.db`
-
-SQLite table:
-
-`centrifugal_pump_readings`
-
-The database is shared with the synthetic pipeline, but each pipeline
-stores its data in a separate table.
-
-## Data Quality Report
-
-Generate a data quality report from the raw pump dataset:
-
-```powershell
-python -m src.data_quality
-```
+- Extracts machine sensor data from CSV.
+- Validates required columns.
+- Converts timestamps and sensor values.
+- Handles missing and duplicate records.
+- Saves cleaned data to CSV and SQLite.
+- Records execution logs and pipeline metadata.
 
 Output:
 
-`reports/pump_data_quality_report.txt`
+- CSV: `data/processed/machine_sensor_clean.csv`
+- SQLite table: `machine_sensor_readings`
 
-### Initial Dataset Audit
+### 2. Centrifugal Pump Pipeline
 
-The raw CSV used during development contained the following:
+Run:
+
+```bash
+python -m src.pump_etl
+```
+
+This pipeline:
+
+- Extracts centrifugal pump sensor data.
+- Validates and converts timestamps.
+- Converts sensor columns to numeric values.
+- Removes invalid timestamps and duplicate records.
+- Preserves missing sensor values for data quality analysis.
+- Saves cleaned data to CSV and SQLite.
+- Records execution logs and pipeline metadata.
+
+Output:
+
+- CSV: `data/processed/centrifugal_pump_clean.csv`
+- SQLite table: `centrifugal_pump_readings`
+
+Both pipelines store their data in:
+
+`data/processed/industrial_data.db`
+
+## Data Quality Report
+
+The project includes data quality checks for the centrifugal pump dataset.
+
+The checks cover:
+
+- Total number of rows and columns.
+- Missing values.
+- Invalid timestamps.
+- Duplicate records.
+- Dataset observation time range.
+
+### Dataset Summary
 
 | Metric | Result |
 |---|---:|
-| Rows | 4,981 |
-| Columns | 11 |
-| Missing cells | 271 |
-| Missing cell percentage | 0.49% |
-| Exact duplicate rows | 0 |
+| Original rows | 4,981 |
+| Rows after cleaning | 4,980 |
+| Missing values before cleaning | 271 |
+| Missing values after cleaning | 260 |
 | Invalid timestamps | 1 |
+| Duplicate rows | 0 |
 
-Timestamp range (UTC):
+Missing sensor values are intentionally preserved after cleaning so they remain available for data quality analysis.
 
-- **Start:** `2024-04-10 12:00:00`
-- **End:** `2024-04-10 13:59:59`
+The generated report is stored at:
 
-These figures describe the raw CSV audited during development.
-The cleaned dataset contains 4,980 rows after the invalid timestamp
-is removed.
-
-Missing sensor values are preserved by the pump transformation
-so that downstream analysis can determine an appropriate handling
-strategy.
-
-These checks do not establish that a pump has failed. The pipeline
-does not infer failure labels or diagnose equipment faults.
+`reports/pump_data_quality_report.txt`
 
 ## SQL Analytics
 
-The project provides SQL-based analytics for both synthetic machine
-sensor data and centrifugal pump sensor data.
+SQLite is used to store processed sensor data and perform analytical queries.
 
-Run the analytics module:
+The analytics module supports:
 
-```powershell
-python -m src.analytics
+- Sensor reading summaries.
+- Average, minimum, and maximum sensor values.
+- Missing value analysis.
+- Dataset observation time range.
+- Machine and pump sensor data analysis.
+
+Database location:
+
+`data/processed/industrial_data.db`
+
+## Structured Logging
+
+The project uses Python's built-in logging module to record pipeline execution activities.
+
+The logging system records:
+
+- Pipeline execution timestamps.
+- Extract, transform, and load activities.
+- Number of input and output records.
+- Number of removed records.
+- Output file locations.
+- Pipeline execution status.
+- Error details when a pipeline fails.
+
+Logs are written to:
+
+`logs/pipeline.log`
+
+Log messages are also displayed directly in the terminal during pipeline execution.
+
+## Pipeline Execution Metadata
+
+Each pipeline execution is recorded in the `pipeline_runs` table inside the SQLite database.
+
+The metadata includes:
+
+| Column | Description |
+|---|---|
+| `id` | Unique execution ID |
+| `pipeline_name` | Name of the executed pipeline |
+| `start_time` | Pipeline start timestamp |
+| `end_time` | Pipeline completion timestamp |
+| `duration_seconds` | Pipeline execution duration |
+| `status` | Pipeline execution status |
+| `rows_input` | Number of input records |
+| `rows_output` | Number of output records |
+| `rows_removed` | Number of removed records |
+| `error_message` | Error details if execution fails |
+
+Pipeline execution statuses:
+
+- `RUNNING`: The pipeline is currently executing.
+- `SUCCESS`: The pipeline completed successfully.
+- `FAILED`: The pipeline execution failed.
+
+This feature provides execution history and basic monitoring for both ETL pipelines.
+
+### Viewing Pipeline Execution History
+
+The execution history can be queried using SQL:
+
+```sql
+SELECT
+    id,
+    pipeline_name,
+    start_time,
+    end_time,
+    duration_seconds,
+    status,
+    rows_input,
+    rows_output,
+    rows_removed,
+    error_message
+FROM pipeline_runs
+ORDER BY id DESC;
 ```
-
-The module queries the SQLite database and generates summaries
-from both `machine_sensor_readings` and
-`centrifugal_pump_readings`.
-
-### Synthetic Machine Sensor Analytics
-
-The module summarizes readings from the `machine_sensor_readings`
-table, including:
-
-- Total sensor readings per machine.
-- Average temperature.
-- Maximum vibration.
-- Average pressure.
-
-### Centrifugal Pump Sensor Analytics
-
-The module summarizes readings from the `centrifugal_pump_readings`
-table, including:
-
-- Total readings and observation time range.
-- Average, minimum, and maximum pressure.
-- Average, minimum, and maximum pump temperature.
-- Missing pressure readings.
-- Missing pump temperature readings.
-- Missing motor readings.
-- Missing pump readings.
-
-SQL aggregation functions such as `COUNT`, `AVG`, `MIN`, `MAX`,
-and `SUM` are used to calculate these metrics.
-
-Missing sensor values are counted explicitly. Average, minimum,
-and maximum calculations exclude SQL `NULL` values.
-
-The pump analytics requires the centrifugal pump ETL pipeline to
-have populated the SQLite table before it is run.
 
 ## Automated Tests
 
-Run the complete test suite:
+The project uses pytest to validate ETL transformations and analytics logic.
 
-```powershell
+Run the test suite:
+
+```bash
 python -m pytest -v
 ```
 
-The test suite contains 14 tests covering:
+Latest test results:
 
-- Missing-value handling in the synthetic pipeline.
-- Duplicate removal and sorting.
-- Required-column validation.
-- CSV and SQLite output.
-- UTC timestamp conversion in the pump pipeline.
-- Invalid timestamp removal.
-- Preservation of missing sensor values.
-- Exact duplicate removal.
-- Missing timestamp-column validation.
-- Pump analytics aggregation.
-- Timestamp range calculations.
-- SQL `NULL` handling in analytics.
+- Total tests: 14
+- Passed: 14
+- Failed: 0
 
-Latest development test result: **14 passed**.
+The automated tests cover:
 
-Run the tests after modifying the ETL or analytics logic to check
-that existing behavior remains correct.
+- Machine sensor data cleaning.
+- Required column validation.
+- Missing value handling.
+- Duplicate record removal.
+- Timestamp transformation.
+- CSV and SQLite data loading.
+- Pump sensor data cleaning.
+- Pump analytics and summary calculations.
 
 ## Current Limitations
 
-- The pump pipeline processes a single downloaded CSV file.
-- Missing sensor values are reported and preserved, not imputed.
-- Sensor units and abnormal-value thresholds must be verified
-  against the dataset documentation before interpreting readings.
-- The synthetic dataset is intended for demonstration and testing.
-- The project does not yet implement automated scheduling,
-  production orchestration, or failure prediction.
-- The pump pipeline does not currently include labeled failure
-  events or a validated fault-detection model.
-- Analytics summarizes available sensor data but does not establish
-  causal relationships or diagnose equipment faults.
+- Synthetic machine sensor data is currently generated for development and testing.
+- The centrifugal pump pipeline currently processes one dataset file.
+- No interactive monitoring dashboard is available.
+- Pipeline orchestration is not yet automated.
+- Dedicated automated tests for logging and pipeline metadata have not yet been implemented.
 
 ## Future Improvements
 
-- Add structured logging and pipeline execution metadata.
-- Add tests for database contents and data quality reports.
-- Support configurable input files and larger datasets.
-- Add reproducible dataset download instructions.
-- Introduce automated pipeline scheduling and orchestration.
-- Add visualizations and trend analysis for pump sensor readings.
-- Integrate with a predictive maintenance model when suitable
-  labels and evaluation data are available.
+Potential improvements include:
+
+- Integrating additional industrial sensor datasets.
+- Building an interactive monitoring dashboard using Streamlit.
+- Implementing pipeline orchestration using Apache Airflow.
+- Adding notifications for failed pipeline executions.
+- Expanding automated tests for logging and pipeline metadata.
+- Developing predictive analytics for machine condition monitoring.
 
 ## License and Dataset Attribution
 
-The project code and the external dataset may be subject to
-different license terms.
+This project was developed for educational and portfolio purposes in the field of Data Engineering.
 
-Review the original dataset record for its license, attribution
-requirements, and permitted uses before redistributing the raw data.
+The centrifugal pump dataset was obtained from Zenodo:
+
+https://zenodo.org/records/18479728
+
+Dataset usage is subject to the license and attribution requirements specified by the dataset provider.
